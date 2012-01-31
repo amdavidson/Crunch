@@ -7,6 +7,7 @@ posts. It was created to run amdavidson.com.
 The configuration is stored in a file called conf.yaml in the same directory as crunch.
 
 An example configuration follows:
+
   # extension defines the extension to be used by all the post files.
   extension: .md
   # server_port defines the port to be used by the built in web server.
