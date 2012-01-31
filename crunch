@@ -214,8 +214,7 @@ class Post:
 
 # General purpose formatter for a full page, takes in a Page object. 
 def format_layout(page):
-  return """
-<html>
+  return """<html>
   <head>
     <meta charset="utf-8" />
     <meta name="author" content="%(author)s" />
@@ -257,14 +256,18 @@ def format_layout(page):
       <a href="/">photos</a>, and saves 
       <a href="http://pinboard.in/u:amdavidson/">links</a>. You can also see posts 
       dating <a href="/archives">back to 2005</a>.</p>
-    </div>
-    <div class="four columns">
+
       <h6>Search</h6>
       <form method="get" id="search" action="http://duckduckgo.com/">
         <input type="hidden" name="sites" value="amdavidson.com"/>
         <input type="text" name="q" maxlength="255" placeholder="Search&hellip;"/>
         <input type="submit" value="DuckDuckGo Search" style="visibility: hidden;" />
       </form>
+      
+      <!-- placeholder: twitter -->
+      
+      <!-- placeholder: pinboard -->
+      
     </div>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.js"></script>
     <script src="/scripts/app.js"></script>
@@ -328,6 +331,66 @@ def format_xml_item(post):
     </item>
   """ % {'title': post.title, 'url': post.url(), 'date_2822': post.date_2822(),
          'body': post.content }
+
+
+##########################################################################################
+### Helper Functions
+##########################################################################################
+
+def get_recent(count):
+  # Create an empty variable to store posts in.
+  post_list = []
+      
+  # Get all the years in reverse order.
+  for year in sorted(os.listdir(posts_folder), reverse = True):
+
+    # Make sure we're using a year folder.
+    if re.match('\d\d\d\d', year): 
+      
+      # Get all the months for the year in reverse order.
+      for month in sorted(os.listdir(posts_folder + '/' + year), reverse = True):
+        
+        # Make sure we're working with a month folder:
+        if re.match('\d\d', month):
+          
+          # Make a temporary list.
+          tmp = []
+          
+          # Grab all the posts in the folder in no particular order.
+          for file in os.listdir(posts_folder + '/' + year + '/' + month):
+            
+            # Ensure we're only grabbing files with the correct extension.
+            if file.endswith(conf['extension']):
+              
+              # Make a new post object
+              p = Post()
+              
+              # Open the file.
+              f = open(posts_folder + '/' + year + '/' + month + '/' + file)
+              
+              # Set the filename.
+              p.filename = file
+              
+              # Parse the post.
+              p.parse(f.read())
+              
+              # Add the post to the tmp list
+              tmp.append(p)
+          
+          # Process this month's posts and add them to the empty variable in reverse
+          # chronological order.
+          for post in sorted(tmp, key=lambda p: p.time, reverse = True):
+            if len(post_list) >= count: break
+            post_list.append(post)
+            
+        if len(post_list) >= count:
+          break
+    
+    if len(post_list) >= count:
+      break
+      
+  return post_list
+
 
 ##########################################################################################
 ### Build Functions
@@ -416,46 +479,22 @@ def crunch_posts():
 # Function to process the home file.
 def crunch_home():
   if args.verbose: print 'Building the home page.'  
-  if args.verbose: print 'Finding posts to parse.'
   
-  # Create a list of all posts to use to identify the most recent ones.
-  # There is certainly a better way to do this but it works.
-  # The goal of using this process is to minimize the amount of files that need to be 
-  # opened.  
-  postlist = []
-  for year in os.listdir(posts_folder):
-    for month in os.listdir(posts_folder + '/' + year):
-      for post in os.listdir(posts_folder + '/' + year + '/' + month):
-        if post.endswith(conf['extension']):
-          if args.verbose: print '\t' + year + '/' + month + '/' + post
-          postlist.append([year, month, post])
-  
-  # Process the list above to determine the 30 most recent posts roughly sorted by month 
-  # and year, the "30" number could be reduced by using logic to determine how many posts 
-  # have been posted recently. Ex: If more posts than will be on the home page have been 
-  # posted in the last month, don't process any more than the last month. or maybe work 
-  # backwards from todays date until X posts have been found.
-  if args.verbose: print 'Parsing recent posts.'
-  posts = []
-  for p in sorted(postlist,reverse=True):
-    if len(posts) >= 30: break
-    if args.verbose: print '\t' + p[2]
-    post = Post()
-    f = open(posts_folder + '/' + p[0] + '/' + p[1] + '/' + p[2], 'r')
-    post.filename = p[2]
-    post.parse(f.read())
-    f.close
-    posts.append(post)
+  # Grab the recent posts.
+  if args.verbose: print '\tGet all the required posts.'
+  postlist = get_recent(conf['home_count'])
   
   # Create the home page. 
-  if args.verbose: print 'Writing the home page.'
+  if args.verbose: print '\tWriting the home page.'
   home = Page()
+  
+  # Make an empty home variable
   home.body = ''
 
   # Sort the posts by their actual timestamps and then assemble the most recent formatted 
   # posts into the body of the page. The post count is determined by the home_count 
   # variable in the configuration file.
-  for p in sorted(posts, key=lambda post: post.time, reverse = True)[:conf['home_count']]:
+  for p in postlist:
     home.body += p.formatted()
   
   # Write out the home page. 
@@ -880,61 +919,12 @@ def confirmation_email(post):
 # crunch_feed() will generate an rss feed for the site.
 def crunch_feed():
   if args.verbose: print 'Crunch RSS feed.'
-  
-  # Create an empty variable to store posts in.
-  post_list = []
-  
-  if args.verbose: print 'Get all the required posts.'
-    
-  # Get all the years in reverse order.
-  for year in sorted(os.listdir(posts_folder), reverse = True):
 
-    # Make sure we're using a year folder.
-    if re.match('\d\d\d\d', year): 
-      
-      # Get all the months for the year in reverse order.
-      for month in sorted(os.listdir(posts_folder + '/' + year), reverse = True):
-        
-        # Make sure we're working with a month folder:
-        if re.match('\d\d', month):
-          
-          # Make a temporary list.
-          tmp = []
-          
-          # Grab all the posts in the folder in no particular order.
-          for file in os.listdir(posts_folder + '/' + year + '/' + month):
-            
-            # Ensure we're only grabbing files with the correct extension.
-            if file.endswith(conf['extension']):
-              
-              # Make a new post object
-              p = Post()
-              
-              # Open the file.
-              f = open(posts_folder + '/' + year + '/' + month + '/' + file)
-              
-              # Set the filename.
-              p.filename = file
-              
-              # Parse the post.
-              p.parse(f.read())
-              
-              # Add the post to the tmp list
-              tmp.append(p)
-          
-          # Process this month's posts and add them to the empty variable in reverse
-          # chronological order.
-          for post in sorted(tmp, key=lambda p: p.time, reverse = True):
-            if len(post_list) >= conf['feed_count']: break
-            post_list.append(post)
-            
-        if len(post_list) >= conf['feed_count']:
-          break
-    
-    if len(post_list) >= conf['feed_count']:
-      break
+  # Get recent posts.  
+  if args.verbose: print '\tGet all the required posts.'
+  post_list = get_recent(conf['feed_count'])
                   
-  if args.verbose: print 'Generating the new feed.'
+  if args.verbose: print '\tGenerating the new feed.'
 
   # Make an empty body variable
   body = ''
@@ -950,7 +940,7 @@ def crunch_feed():
   page.body = body
 
   # Write out the post to the new file.
-  if args.verbose: print 'Writing out the feed.'
+  if args.verbose: print '\tWriting out the feed.'
   f = open(build_folder + '/index.xml' , 'w')
   f.writelines(page.xml())
   f.close
