@@ -14,6 +14,7 @@ import urllib2
 import email
 import smtplib
 from email.mime.text import MIMEText
+from email.Utils import formatdate
 
 try:
   import argparse
@@ -71,6 +72,8 @@ if argparse_available:
   parser.add_argument('--no-http', dest='http', action='store_false',
                       help='Prevents crunch from contacting external sources during the \
                       build.')
+  parser.add_argument('--pages', dest='pages', action='store_true',
+                      help='Builds all static pages.')
   parser.add_argument('--posts', dest='posts', action='store_true',
                       help='Builds all posts.')
   parser.add_argument('--serve', dest='serve', action='store_true',
@@ -109,7 +112,8 @@ else:
   print 'ERROR: yaml is unavailable, please install and retry.'
   sys.exit(1)
   
-  
+
+# Define some variables for reuse.
 build_folder = base_folder + '/' + conf['build_folder']
 posts_folder = base_folder + '/' + conf['posts_folder']
 public_folder = base_folder + '/' + conf['public_folder']
@@ -129,11 +133,11 @@ class Page:
   base_url = conf['base_url']
   
   
-  # return a formatted version of the page using the template function format_layout()
+  # Return a formatted version of the page using the template function format_layout()
   def formatted(self):
     return format_layout(self)
     
-  # return an xml formatted version of the page using the template function format_xml()
+  # Return an xml formatted version of the page using the template function format_xml()
   def xml(self):
     return format_xml(self)
 
@@ -163,19 +167,24 @@ class Post:
       return time.strftime("posted on %Y-%m-%d", self.time)
     else:
       return time.strftime("posted on %Y-%m-%d at %I:%M %p", self.time)
-      
+  
+  # Generate a date in a specific format for the RSS feed.
   def date_2822(self):
-    return time.strftime("%a, %d %b %Y %H:%M:%S +0000", self.time)
+    return formatdate(time.mktime(self.time))
+  
+  # Generate a date in the 8601 format.
+  def date_8601(self):
+    return time.strftime("%Y-%m-%dT%H:%M:%S", self.time)
 
-  # returns the relative url for the post.
+  # Returns the relative url for the post.
   def url(self):
     return '/' + self.year() + '/' + self.month() + '/' + self.slug
 
-  # returns the full short url for the post.
+  # Returns the full short url for the post.
   def url_short(self):
     return 'http://amd.im/' + self.short
 
-  # parses a string to populate the post object.
+  # Parses a string to populate the post object.
   def parse(self, string):
     header, body = string.split('\n\n', 1)               
   
@@ -244,9 +253,7 @@ def format_layout(page):
 
     <link rel="alternate" type="application/atom+xml" title="amdavidson.com feed" 
           href="/index.xml" />
-
-    <script src="http://mint.amdavidson.com/?js" type="text/javascript"></script>
-    
+              
     <title>%(title)s</title>
   </head>
   <body>
@@ -267,21 +274,46 @@ def format_layout(page):
       <a href="/">photos</a>, and saves 
       <a href="http://pinboard.in/u:amdavidson/">links</a>. You can also see posts 
       dating <a href="/archives">back to 2005</a>.</p>
+      
+      <div id="twitter" style="display:none;">
+        <h6><a href="http://twitter.com/amdavidson">Twitter</a></h6>
+        <p class="small"><span id="tweet"></span></p>
+      </div>
+
+      <div id="pinboard" style="display:none;">
+        <h6><a href="http://pinboard.in/u:amdavidson">Pinboard</a></h6>
+        <p class="small"><a id="pin-link" href="/"><span id="pin-title"></span></a><br/>
+        <span id="pin-description"></span></p>
+      </div>
 
       <h6>Search</h6>
       <form method="get" id="search" action="http://duckduckgo.com/">
+        <input type="hidden" name="kj" value="#181818" />
+        <input type="hidden" name="kl" value="us-en" />
+        <input type="hidden" name="kg" value="g" />
+        <input type="hidden" name="k4" value="-1" />
+        <input type="hidden" name="k1" value="-1" />
         <input type="hidden" name="sites" value="amdavidson.com"/>
         <input type="text" name="q" maxlength="255" placeholder="Search&hellip;"/>
         <input type="submit" value="DuckDuckGo Search" style="visibility: hidden;" />
       </form>
-      
-      <!-- placeholder: twitter -->
-      
-      <!-- placeholder: pinboard -->
-      
+                        
     </div>
-    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.js"></script>
-    <script src="/scripts/app.js"></script>
+    
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js">
+      </script>
+    <script src="/scripts/jquery.timeago.js"></script>
+    <script src="/scripts/twitter.js"></script>
+    <script src="/scripts/pinboard.js"></script>
+    
+    <script type="text/javascript">
+      jQuery(document).ready(function() {
+          jQuery("span.timeago").timeago();
+      });
+    </script>
+
+    <script src="http://mint.amdavidson.com/?js" type="text/javascript"></script>
+
   </body>
   <!-- Generated by crunch on %(date)s -->
 </html>
@@ -293,13 +325,15 @@ def format_post(post):
   return """
       <div class="eleven columns">
         <h3><a href=\"%(url)s\" title="%(title)s">%(title)s</a></h3>
-        <p class="small">%(date)s - <a href=\"%(short_url)s\">amd.im/%(short)s</a></p>
+        <p class="small"><span class="timeago" title="%(isodate)s">%(date)s</span> - 
+          <a href=\"%(short_url)s\">amd.im/%(short)s</a></p>
       </div>
       <div class="eleven columns">
         %(content)s
       </div>
     """ % {'title':post.title, 'content':post.content, 'url':post.url(), 
-           'date':post.date_pretty(), 'short_url':post.url_short(), 'short':post.short}
+           'isodate':post.date_8601(), 'date':post.date_pretty(), 
+           'short_url':post.url_short(), 'short':post.short}
 
 # General purpose formatter for error pages. Takes in an error code string.
 def format_error(code):
@@ -309,9 +343,10 @@ def format_error(code):
       </div>
       <div class="eleven columns">
         <p>Unfortunately, you've found one of those elusive error %(code)s pages.</p>
-        <p>However you ended up here, I'm going to guess this isn't where you wanted to 
-        be.</p>
-        <p>Perhaps you were looking for the <a href="/">home page</a>?</a>
+        <p>However you ended up here, I'm going to guess this isn't where you wanted 
+          to be.</p>
+        <p>Perhaps you were looking for the <a href="/">home page</a>? If not, maybe you 
+        can find what you need in the <a href="/archives.htm">archives</a>.</p>
       </div>
     """ % {'code': code}
 
@@ -341,8 +376,8 @@ def format_xml_item(post):
         %(body)s
       </description>
     </item>
-  """ % {'title': post.title, 'url': post.url(), 'date_2822': post.date_2822(),
-         'body': post.content }
+  """ % {'title': post.title, 'url': conf['base_url'].rstrip('/') + post.url(), \
+         'date_2822': post.date_2822(), 'body': post.content }
 
 
 ##########################################################################################
@@ -435,6 +470,10 @@ def crunch_errors():
     f.writelines(page.formatted())
     f.close
 
+# Process pages.
+def crunch_pages(): 
+  if args.verbose: print 'Building the static pages.'
+
 
 # Processes all posts. 
 def crunch_posts():
@@ -522,12 +561,20 @@ def crunch_home():
 def crunch_indexes():
   if args.verbose: print 'Building the indexes.'
   
+  # Start the body for the archives.htm page.
+  archives_body = '<div class="eleven-columns"><h3>Post Archives</h3>\n' + \
+    '<ul id="acc" class="square">\n'
+
   # Grab all the years in the posts folder.
-  for year in os.listdir(posts_folder): 
+  for year in sorted(os.listdir(posts_folder), reverse=True): 
 
     # Ensure that we're working with a year folder.
     if re.match('\d\d\d\d', year):
       if args.verbose: print 'Building indexes for ' + year + ':'
+			
+      # Add an entry to archives.htm
+      archives_body += '<li><a href="/' + year + '">' + year + '</a>\n\t\
+        <ul class="circle">\n'
 
       # Make a corresponding year folder in the build folder if it doesn't exist.
       year_path = build_folder + '/' + year
@@ -537,11 +584,15 @@ def crunch_indexes():
       year_catch = []
 
       # Grab all the month folders for the current year.
-      for month in os.listdir(posts_folder + '/' + year):
+      for month in sorted(os.listdir(posts_folder + '/' + year), reverse=True):
 
         # Ensure we're working with a year folder.
         if re.match('\d\d', month):
           if args.verbose: print "\t" + month
+
+          # Add an entry to archives.htm.
+          archives_body += '\t\t<li><a href="/' + year + '/' + month + '">' + month \
+              + '</a>\n'
 
           # Make a corresponding month folder in the build folder if it doesn't exist.
           month_path = build_folder + '/' + year + '/' + month
@@ -580,11 +631,21 @@ def crunch_indexes():
             month_body += post.formatted()
           month_page.body = month_body
 
+          # Write out the titles to the posts to archives.htm in ascending order.
+          archives_body += '\t\t\t<ul>\n'
+          for post in sorted(month_catch, key=lambda post: post.time, reverse=True):
+            archives_body += '\t\t\t\t<li><a href="' + post.url() + '">' + \
+              str(post.title) + '</a></li>\n'
+          archives_body += '\t\t\t</ul></li>\n'
+
           # Write out the month page into the build folder.
           m = open(build_folder + '/' + year + '/' + month + '/index.htm', "w")
           m.writelines(month_page.formatted())
           m.close()
           os.chmod(build_folder + '/' + year + '/' + month + '/index.htm', 0644)
+      
+      # Close out the list of months in archive.htm
+      archives_body += '\t</ul></li>\n'
       
       # Once all the posts for the current year have been processed, make a new
       # Page object for the year.
@@ -603,6 +664,19 @@ def crunch_indexes():
       y.writelines(year_page.formatted())
       y.close
       os.chmod(build_folder + '/' + year + '/index.htm', 0644)
+    
+  # Close out the list of years in archive.htm
+  archives_body += '</ul>\n</div>'
+  
+  archives_page = Page()
+  archives_page.title = 'Archives | ' + archives_page.title
+  archives_page.body = archives_body
+  
+  a = open(build_folder + '/archives.htm', 'w')
+  a.writelines(archives_page.formatted())
+  a.close
+  os.chmod(build_folder + '/archives.htm', 0644)
+    
     
 # crunch_clean() deletes the build folder to clear out old ghosts.
 # This function is not generally necessary as files will be overwritten 
@@ -650,11 +724,11 @@ def crunch_email(message):
       # If the content is text/plain, use it for the message body. (This may accidentally
       # collect certain types of forwarded messages.)
       if type == 'text/plain':
-        body = part.get_payload()
+        body = body + part.get_payload()
     
       # If the content/type starts with 'image' process the image and add it to the top 
       # of the body.
-      elif re.match('image', type, re.I):
+      elif re.search('image', type, re.I):
         if args.verbose: print 'Found an image.'
 
         # Let's make sure that we have the necessary libraries for image processing.
@@ -678,17 +752,22 @@ def crunch_email(message):
           # Open the image with PIL.
           original = Image.open(StringIO(payload))
 
-					# Check for a rotated image.
+          # Check for a rotated image.
           for orientation in ExifTags.TAGS.keys():
             if ExifTags.TAGS[orientation]=='Orientation' : break
-          exif = dict(original._getexif().items())
-          
-          if exif[orientation] == 3:
-            original = original.rotate(180, expand=True)
-          elif exif[orientation] == 6:
-            original = original.rotate(270, expand=True)
-          elif exif[orientation] == 8:
-            original = original.rotate(90, expand=True)
+          if original._getexif():
+            exif = dict(original._getexif().items())
+          else: 
+            exif = False 
+            
+          if not exif == False:
+            if args.verbose: print 'Image is rotated, correcting.'
+            if exif[orientation] == 3:
+              original = original.rotate(180, expand=True)
+            elif exif[orientation] == 6:
+              original = original.rotate(270, expand=True)
+            elif exif[orientation] == 8:
+              original = original.rotate(90, expand=True)
 
           # Create empty resized var.
           resized = False
@@ -696,22 +775,31 @@ def crunch_email(message):
           # If the image extends beyond the image_width x image_height square we
           # need to resize the image and save a smaller version.
           # This should not upscale any smaller images.
-          if original.size[0] > conf['image_width'] or original.size[1] > conf['image_height']:
-
+          if original.size[0] > conf['image_width'] or original.size[1] > \
+            conf['image_height']:
+            if args.verbose: print 'Image is larger than ' + str(conf['image_width']) + \
+              'x' + str(conf['image_height'])
             # Calculate the aspect ratio of the image.
             aspect = float(original.size[0])/float(original.size[1])
 
-            # If the image is wider than it is tall, calculate the height from image_width.
+            # If the image is wider than it is tall, calculate the height from 
+            # image_width.
             if aspect > 1:
-              resized = original.resize((conf['image_width'],int(conf['image_width']/aspect)), Image.ANTIALIAS)
+              resized = original.resize((conf['image_width'],int(conf['image_width'] / \
+                aspect)), Image.ANTIALIAS)
 
-            # If the image is taller than it is wider, calculate the width from image_height.
+            # If the image is taller than it is wider, calculate the width from 
+            # image_height.
             elif aspect < 1:
-              resized = original.resize((int(conf['image_height']*aspect),conf['image_height']), Image.ANTIALIAS)
+              resized = original.resize((int(conf['image_height']*aspect), \
+                conf['image_height']), Image.ANTIALIAS)
 
             # If the image is square use image_width to set the size.
             else:
-              resized = original.resize((conf['image_width'], conf['image_width']), Image.ANTIALIAS)
+              resized = original.resize((conf['image_width'], conf['image_width']), \
+                Image.ANTIALIAS)
+          
+          if args.verbose: print 'Saving image to ' + images_folder + '/posts'
           
           # Save the original file to the $images/posts folder.
           original.save(images_folder + '/posts/' + id + '.jpg')
@@ -719,30 +807,39 @@ def crunch_email(message):
 
           # If we created a resized copy, save to the $images/posts folder.
           if not resized == False:
+            if args.verbose: print 'Saving resized image to ' + images_folder + '/posts'
             resized.save(images_folder + '/posts/' + id + '_z.jpg')
             os.chmod(images_folder + '/posts/' + id + '_z.jpg', 0644)
           
           # If the build folder exists save the image(s) to there as well.
           if os.path.exists(build_folder):
+            if args.verbose: print 'Saving image to ' + build_folder + '/images/posts/'
             original.save(build_folder + '/images/posts/' + id + '.jpg')
             os.chmod(build_folder + '/images/posts/' + id + '.jpg', 0644)
             
             if not resized == False:
+              if args.verbose: print 'Saving resized image to ' + build_folder + \
+                '/images/posts/'
               resized.save(build_folder + '/images/posts/' + id + '_z.jpg')
               os.chmod(build_folder + '/images/posts/' + id + '_z.jpg', 0644)
           
-          # Generate an image tag string based on whether we had to resize the 
-          # image or not.
+          # Generate an image tag string based on whether we had to resize the image or 
+          # not.
           if resized:
+            if args.verbose: print 'Generating image tag (resized).'
             img_tag = '<p style="text-align:center;"><a href="/images/posts/' + id + \
                       '.jpg"><img class="scale-with-grid" src="/images/posts/' + id + \
                       '_z.jpg" /></a></p>\n\n'
           else:
+            if args.verbose: print 'Generating image tag.'
             img_tag = '<p style="text-align:center;"><a href="/images/posts/' + id + \
                       '.jpg"><img class="scale-with-grid" src="/images/posts/' + id + \
                       '.jpg" /></a></p>\n\n'
           
+          print img_tag
+          
           # Add the image tag to the top of the body.
+          if args.verbose: print 'Adding image tag to post.'
           body = img_tag + body
           
     if args.verbose: print 'Body:', body
@@ -760,7 +857,18 @@ def crunch_email(message):
     # Generate the filename for the new post.
     filename = posts_folder + time.strftime("/%Y/%m/", email_date) + slug + \
                conf['extension']
-    
+
+    # Check to make sure the directory exists for the new post.
+    if not os.path.exists(posts_folder + time.strftime("/%Y/%m/", email_date)):
+      if not os.path.exists(posts_folder + time.strftime("/%Y/", email_date)):
+        if args.verbose: print 'Making a new month folder.'
+        os.mkdir(posts_folder + time.strftime("/%Y/", email_date))
+        os.chmod(posts_folder + time.strftime("/%Y/", email_date), 0755)
+      if args.verbose: print 'Making a new year folder.'
+      os.mkdir(posts_folder + time.strftime("/%Y/%m/", email_date))
+      os.chmod(posts_folder + time.strftime("/%Y/%m/", email_date), 0755)
+
+
     # Write out the post to the new file.
     if args.verbose: print 'Making a new post in the posts folder.'
     f = open(filename, 'w')
@@ -779,8 +887,8 @@ def crunch_email(message):
 
 
 # crunch_single() generates a new post file from an inputted string and returns the post 
-# object. crunch_single() is used for both generating from a post file, from stdin, or 
-# from a parsed email.
+# object. Is used for both generating from a post file, from stdin, or from a parsed 
+# email.
 def crunch_single(string): 
   # Create a new Post object for this new post.
   post = Post()
@@ -805,6 +913,15 @@ def crunch_single(string):
   filename = build_folder + '/' + post.year() + '/' + post.month() + '/' + post.slug + \
              '.htm'
   if args.verbose: print 'Filename:', filename
+
+  # Check to make sure the directory exists for the new post.
+  if not os.path.exists(build_folder + '/' + post.year() + '/' + post.month()):
+    if not os.path.exists(build_folder + '/' + post.year()):
+      os.mkdir(build_folder + '/' + post.year())
+      os.chmod(build_folder + '/' + post.year(), 0755)
+    os.mkdir(build_folder + '/' + post.year() + '/' + post.month())
+    os.chmod(build_folder + '/' + post.year() + '/' + post.month(), 0755)
+
   
   # Write out the page to the new file.
   n = open(filename, "w")
@@ -817,8 +934,8 @@ def crunch_single(string):
   if args.dependencies:
     
     # Let's rebuild the index pages for this post's year and month.
-    if args.verbose: print 'Rebuilding indexes for ' + post.year() + '/' + \
-      post.month() + ':'
+    if args.verbose: print 'Rebuilding indexes for ' + post.year() + '/' + post.month() \
+      + ':'
     
     # Make the year folder if it doesn't exist. (First post of a new year.)
     year_path = build_folder + '/' + post.year()
@@ -965,130 +1082,234 @@ def crunch_feed():
   f.close
   os.chmod(build_folder + '/index.xml', 0644)  
 
+# Create a specific gallery matching a string identifier.
+def crunch_gallery(name):
+  if args.verbose: print 'Crunching gallery "' + name + '".'
+  
+  if not os.path.exists(galleries_folder + '/' + name):
+    print 'ERROR: Gallery ' + name + ' does not exist.'
+    return 1
 
+  # Define some allowable image extensions.
+  image_extensions = ('.jpg', '.jpeg', '.gif', '.png')
+
+  # Make a destination gallery.
+  if not os.path.exists(build_folder + '/' + conf['galleries_folder'] + '/' + name):
+    os.mkdir(build_folder + '/' + conf['galleries_folder'] + '/' + name)
+
+  images = ''
+  
+  # Run through the files in the directory.
+  for file in os.listdir(galleries_folder + '/' + name):
+
+    # Process the meta data file.
+    if file == 'meta.md':
+      if args.verbose: print '\tProcessing metadata.'
+      md = markdown.Markdown(extensions = ['meta'])
+      description = md.convert(open(galleries_folder + '/' + name + '/' + file, \
+        'r').read())
+  
+  
+    # Copy all the images.
+    if filter(file.endswith, image_extensions):
+      if args.verbose: print '\tCopying image ' + file
+      shutil.copy(galleries_folder + '/' + name + '/' + file, 
+                  build_folder + '/'+ conf['galleries_folder'] + '/' + name + '/' + file)
+    
+      if not re.search('_z', file) and not re.search('_thm', file):
+        i = Gallery_Image()
+        i.master_image = file
+        i.gallery_name = name
+        
+        p = Page()
+      
+        images += i.formatted_thumb()
+        p.body = i.formatted_single()
+        
+        f = open(build_folder + '/' + conf['galleries_folder'] + '/' + name + '/' + \
+          i.name() + '.htm', 'w')
+        f.writelines(p.formatted())
+        f.close
+        os.chmod(build_folder + '/' + conf['galleries_folder'] + '/' + name + '/' + \
+          i.name() + '.htm', 0644)
+   
+  gal_page = Page()
+  
+  leader = '<h3>' + str(md.Meta['title'][0]) + '</h3>\n<p class="small">' + \
+    time.strftime("posted on %Y-%m-%d at %I:%M %p", 
+      time.localtime(float(md.Meta['date'][0]))) + '</p>'
+  
+  gal_page.body = leader + description + images
+  
+  gal_page.title = str(md.Meta['title'][0]) + ' | ' + gal_page.title
+  
+  f = open(build_folder + '/' + conf['galleries_folder'] + '/' + name + '/index.htm', 'w')
+  f.writelines(gal_page.formatted())
+  f.close
+  os.chmod(build_folder + '/' + conf['galleries_folder'] + '/' + name + \
+    '/index.htm', 0644)
+  
+  
+  
+# Run crunch_gallery() for all galleries in the conf['galleries_folder'] folder.
+def crunch_gallery_all():
+  if args.verbose: print 'Building all galleries.'
+  
+  for dir in [x[0] for x in os.walk(galleries_folder)]:
+    if not re.search(conf['galleries_folder'] + '$', dir):
+      crunch_gallery(os.path.basename(dir))
+      
+  
 ##########################################################################################
 ### Party Time.
 ##########################################################################################
-
-# Setup a new blog structure.
-if args.setup:
-  sys.stderr.write('This build case not implemented yet.\nPlease build with --clean.\n')
-  sys.exit()
-
-# Clean out the build folder.
-if args.clean:
-  crunch_clean()
-
-# Process an email message that is fed in through STDIN.
-if args.email:
-  # Ensure that we have a build folder to use.
-  ensure_build_folder()
-
-  # Crunch the email and grab the new filename.
-  filename = crunch_email(email.message_from_string(sys.stdin.read()))
-
-  # Crunch the new post file and pass back the post object.
-  post = crunch_single(open(filename).read())
-
-  # Use the post object to send a confirmation email.
-  confirmation_email(post)
+def main():
+  # Setup a new blog structure.
+  if args.setup:
+    sys.stderr.write('This build case not implemented yet.\nPlease build with --clean.\n')
+    sys.exit()
   
+  # Clean out the build folder.
+  if args.clean:
+    crunch_clean()
   
-else:
-  # Just process a single post file.
-  if args.single:
-    #ensure_build_folder()
-    #crunch_single()
-    sys.stderr.write('This build case not implemented yet.\n')
-  else:  
-
-    # Re-process everything.
-    if args.all:
-      if args.verbose: print 'Building it all.'
-      # Make sure we have a build folder to use.
-      ensure_build_folder()
-      
-      # Rebuild the error pages
-      crunch_errors()
-
-      # Rebuild all posts.
-      crunch_posts()
-
-      # Rebuild all the indexes.
-      crunch_indexes()
-
-      # Rebuild the home page. 
-      crunch_home()
-      
-      # Rebuild the feed.
-      crunch_feed()
+  # Process an email message that is fed in through STDIN.
+  if args.email:
+    # Ensure that we have a build folder to use.
+    ensure_build_folder()
+  
+    # Crunch the email and grab the new filename.
+    filename = crunch_email(email.message_from_string(sys.stdin.read()))
+  
+    # Crunch the new post file and pass back the post object.
+    post = crunch_single(open(filename).read())
+  
+    # Use the post object to send a confirmation email.
+    confirmation_email(post)
     
-    # We're going to do a partial rebuild.
-    elif args.posts or args.home or args.indexes or args.feed:
-      ensure_build_folder()
-      if args.verbose: print 'Selectively building.'
-      
-      # Build error pages if the --error flag is set
-      if args.error:
-        crunch_errors()
-      
-      # Build posts if the --posts flag is set.    
-      if args.posts:
-        crunch_posts()    
-      
-      # Build home if the --home flag is set.
-      if args.home:
-        crunch_home()
-
-      # Build indexes if the --indexes flag is set.
-      if args.indexes:
-        crunch_indexes()
+    
+  else:
+    # Just process a single post file.
+    if args.single:
+      #ensure_build_folder()
+      #crunch_single()
+      sys.stderr.write('This build case not implemented yet.\n')
+    else:  
+  
+      # Re-process everything.
+      if args.all:
+        if args.verbose: print 'Building it all.'
+        # Make sure we have a build folder to use.
+        ensure_build_folder()
         
-      # Build the feed if the --feed flag is set.
-      if args.feed:
+        # Rebuild the error pages
+        crunch_errors()
+  
+        # Rebuild all the static pages.
+        crunch_pages()
+  
+        # Rebuild all posts.
+        crunch_posts()
+  
+        # Rebuild all the indexes.
+        crunch_indexes()
+  
+        # Rebuild the home page. 
+        crunch_home()
+        
+        # Rebuild the feed.
         crunch_feed()
-
-# Start up a uber-simple webserver to test the build on localhost. 
-if args.serve:
-
-  # Pull in the modules we need.
-  try:
-    import SimpleHTTPServer
-    import SocketServer
-  except:
-    print 'Please ensure that the SimpleHTTPServer and SocketServer modules are \
-          installed to enable the built in webserver.'
-
-  # Make sure there's a build folder to serve.
-  ensure_build_folder()
-
-  if args.verbose: print 'Starting server.'
-
-  # Create a simple handler for HTTP GET requests.
-  class myHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
-    def do_GET(self):
-      if args.verbose: print self.path
-
-      # For permalink compatibility, create a redirect so that '.htm' 
-      # isn't necessary for post pages. Enable with server_redirect_htm in 
-      # the configuration file.
-      if conf['server_redirect_htm']:
-        if re.match('/\d\d\d\d\/\d\d\/\w', self.path):
-          self.path = self.path + '.htm'
-          if args.verbose: print 'redirecting to ' + self.path
-            
-      return SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
+        
+        # Build the galleries.
+        crunch_gallery_all()
+      
+      # We're going to do a partial rebuild.
+      elif args.posts or args.home or args.indexes or args.feed or args.galleries or \
+        args.pages:
+        
+        ensure_build_folder()
+        
+        if args.verbose: print 'Selectively building.'
+        
+        # Build error pages if the --error flag is set
+        if args.error:
+          crunch_errors()
+          
+        # Build static pages if the --pages flag is set
+        if args.pages:
+          crunch_pages()
+        
+        # Build posts if the --posts flag is set.    
+        if args.posts:
+          crunch_posts()    
+        
+        # Build home if the --home flag is set.
+        if args.home:
+          crunch_home()
   
-  # Use the handler class and setup a SocketServer instance.
-  handler = myHandler
-  server = SocketServer.TCPServer(("", conf['server_port']), handler)
+        # Build indexes if the --indexes flag is set.
+        if args.indexes:
+          crunch_indexes()
+          
+        # Build the feed if the --feed flag is set.
+        if args.feed:
+          crunch_feed()
+          
+        # Build the galleries if the --galleries flag is set.
+        if args.galleries:
+          crunch_gallery_all()
   
-  # Change to the build folder. 
-  os.chdir(build_folder)
+  # Start up a uber-simple webserver to test the build on localhost. 
+  if args.serve:
+  
+    # Pull in the modules we need.
+    try:
+      import SimpleHTTPServer
+      import SocketServer
+    except:
+      print 'Please ensure that the SimpleHTTPServer and SocketServer modules are \
+            installed to enable the built in webserver.'
+  
+    # Make sure there's a build folder to serve.
+    ensure_build_folder()
+  
+    if args.verbose: print 'Starting server.'
+  
+    # Create a simple handler for HTTP GET requests.
+    class myHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+      def do_GET(self):
+        if args.verbose: print self.path
+  
+        # For permalink compatibility, create a redirect so that '.htm' 
+        # isn't necessary for post pages. Enable with server_redirect_htm in 
+        # the configuration file.
+        if conf['server_redirect_htm']:
+          if re.match('/\d\d\d\d\/\d\d\/\w', self.path):
+            self.path = self.path + '.htm'
+            if args.verbose: print 'redirecting to ' + self.path
+              
+        return SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
+    
+    # Use the handler class and setup a SocketServer instance.
+    handler = myHandler
+    
+    server = False
+    
+    while server == False:
+      try:
+        server = SocketServer.TCPServer(("", conf['server_port']), handler)
+      except:
+        print "Port occupied... Retrying."
+        time.sleep(10)
+         
+    # Change to the build folder. 
+    os.chdir(build_folder)
+  
+    # Start up the server.
+    if args.verbose: print 'Server going live on port', conf['server_port']
+    server.serve_forever()
 
-  # Start up the server.
-  if args.verbose: print 'Server going live on port', conf['server_port']
-  server.serve_forever()
-
+if __name__ == "__main__":
+  main()
    
 ### End Program Stuff ###
