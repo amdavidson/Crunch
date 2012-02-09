@@ -50,34 +50,45 @@ if argparse_available:
   parser.add_argument('--clean', dest='clean', action='store_true',
                       help='Empties the build folder.')
   parser.add_argument('--dependencies', dest='dependencies', action='store_true',
-                      help='Builds all the dependencies, ignored unless used with --single, --new, or --email.')
+                      help='Builds all the dependencies, ignored unless used with \
+                      --single, --new, or --email.')
   parser.add_argument('--email', dest='email', action='store_true',
-                      help='Reads an email message from STDIN and parses to create a new post. Overrides --all, --posts, --indexes, --home, and --single')
+                      help='Reads an email message from STDIN and parses to create a new \
+                      post. Overrides --all, --posts, --indexes, --home, and --single')
   parser.add_argument('--error', dest='error', action='store_true', 
                       help='Generates static error pages.')
   parser.add_argument('--feed', dest='feed', action='store_true',
                       help='Generates RSS feed.')
+  parser.add_argument('--galleries', dest='galleries', action='store_true',
+                      help='Generates galleries.')
   parser.add_argument('--home', dest='home', action='store_true',
                       help='Builds the home page.')
   parser.add_argument('--indexes', dest='indexes', action='store_true',
                       help='Builds the index pages.')
   parser.add_argument('--new', dest='new', action='store_true',
-                      help='Starts an interactive sesson to create a new post. *Not yet implemented*')
+                      help='Starts an interactive sesson to create a new post. *Not yet \
+                      implemented*')
   parser.add_argument('--no-http', dest='http', action='store_false',
-                      help='Prevents crunch from contacting external sources during the build.')
+                      help='Prevents crunch from contacting external sources during the \
+                      build.')
   parser.add_argument('--posts', dest='posts', action='store_true',
                       help='Builds all posts.')
   parser.add_argument('--serve', dest='serve', action='store_true',
-                      help='Starts a lightweight HTTP server to serve build folder to localhost.')
+                      help='Starts a lightweight HTTP server to serve build folder to \
+                      localhost.')
   parser.add_argument('--setup', dest='setup', action='store_true',
-                      help='Creates a basic blog framework to start with. *Not yet implemented.*')
+                      help='Creates a basic blog framework to start with. *Not yet \
+                      implemented.*')
   parser.add_argument('--single', dest='single',
-                      help='Builds a single post. Takes a filename as an argument or use - to read from STDIN. Overrides --all, --posts, --indexes, --home *Not yet implemented.*')
+                      help='Builds a single post. Takes a filename as an argument or use \
+                      - to read from STDIN. Overrides --all, --posts, --indexes, --home \
+                      *Not yet implemented.*')
   parser.add_argument('--verbose', dest='verbose', action='store_true',
                       help='Enables information display other than errors.')
   args = parser.parse_args()
 else:
-  print 'ERROR: The python module argparse is unavailable. Please install argparse and try again.'
+  print 'ERROR: The python module argparse is unavailable. Please install argparse and \
+    try again.'
   sys.exit(1)
 
 ##########################################################################################
@@ -298,7 +309,8 @@ def format_error(code):
       </div>
       <div class="eleven columns">
         <p>Unfortunately, you've found one of those elusive error %(code)s pages.</p>
-        <p>However you ended up here, I'm going to guess this isn't where you wanted to be.</p>
+        <p>However you ended up here, I'm going to guess this isn't where you wanted to 
+        be.</p>
         <p>Perhaps you were looking for the <a href="/">home page</a>?</a>
       </div>
     """ % {'code': code}
@@ -315,8 +327,8 @@ def format_xml(page):
     
   </channel>
 </rss>
-    """ % {'title': page.title, 'description': page.description, 'base_url': page.base_url,
-           'yield': page.body}
+    """ % {'title': page.title, 'description': page.description, 
+           'base_url': page.base_url, 'yield': page.body}
            
 def format_xml_item(post):
   return """
@@ -404,7 +416,7 @@ def ensure_build_folder():
   else:
     shutil.copytree(public_folder, build_folder)
     shutil.copytree(images_folder, build_folder + '/' + conf['images_folder'])
-    shutil.copytree(galleries_folder, build_folder + '/' + conf['galleries_folder'])
+    os.mkdir(build_folder + '/' + conf['galleries_folder'])
     return 2
   return 1
 
@@ -629,7 +641,8 @@ def crunch_email(message):
     # Making empty body to put stuff in.
     body = ''
     
-    # Walk through the message parts to find any plain/text body elements or image attachments.
+    # Walk through the message parts to find any plain/text body elements or 
+    # image attachments.
     if args.verbose: print 'Running through the message parts.'
     for part in message.walk():
       type = part.get_content_type()
@@ -639,7 +652,8 @@ def crunch_email(message):
       if type == 'text/plain':
         body = part.get_payload()
     
-      # If the content/type starts with 'image' process the image and add it to the top of the body.
+      # If the content/type starts with 'image' process the image and add it to the top 
+      # of the body.
       elif re.match('image', type, re.I):
         if args.verbose: print 'Found an image.'
 
@@ -717,13 +731,16 @@ def crunch_email(message):
               resized.save(build_folder + '/images/posts/' + id + '_z.jpg')
               os.chmod(build_folder + '/images/posts/' + id + '_z.jpg', 0644)
           
-          # Generate an image tag string based on whether we had to resize the image or not.
+          # Generate an image tag string based on whether we had to resize the 
+          # image or not.
           if resized:
             img_tag = '<p style="text-align:center;"><a href="/images/posts/' + id + \
-                      '.jpg"><img class="scale-with-grid" src="/images/posts/' + id + '_z.jpg" /></a></p>\n\n'
+                      '.jpg"><img class="scale-with-grid" src="/images/posts/' + id + \
+                      '_z.jpg" /></a></p>\n\n'
           else:
             img_tag = '<p style="text-align:center;"><a href="/images/posts/' + id + \
-                      '.jpg"><img class="scale-with-grid" src="/images/posts/' + id + '.jpg" /></a></p>\n\n'
+                      '.jpg"><img class="scale-with-grid" src="/images/posts/' + id + \
+                      '.jpg" /></a></p>\n\n'
           
           # Add the image tag to the top of the body.
           body = img_tag + body
@@ -735,7 +752,7 @@ def crunch_email(message):
     if args.http:
       if args.verbose: print 'Getting short url.'
       short = urllib2.urlopen('http://amd.im/api-create/' + conf['base_url'] + \
-                              time.strftime('%Y', email_date) + '/' + time.strftime('%Y', \
+                              time.strftime('%Y', email_date) + '/' + time.strftime('%Y',\
                               email_date) + '/' + slug).read().lstrip('http://amd.im/')
     else:
       if args.verbose: print 'WARN: HTTP calls disabled, short url unavailable.'
@@ -761,8 +778,9 @@ def crunch_email(message):
     return filename
 
 
-# crunch_single() generates a new post file from an inputted string and returns the post object.
-# is used for both generating from a post file, from stdin, or from a parsed email.
+# crunch_single() generates a new post file from an inputted string and returns the post 
+# object. crunch_single() is used for both generating from a post file, from stdin, or 
+# from a parsed email.
 def crunch_single(string): 
   # Create a new Post object for this new post.
   post = Post()
@@ -799,7 +817,8 @@ def crunch_single(string):
   if args.dependencies:
     
     # Let's rebuild the index pages for this post's year and month.
-    if args.verbose: print 'Rebuilding indexes for ' + post.year() + '/' + post.month() + ':'
+    if args.verbose: print 'Rebuilding indexes for ' + post.year() + '/' + \
+      post.month() + ':'
     
     # Make the year folder if it doesn't exist. (First post of a new year.)
     year_path = build_folder + '/' + post.year()
@@ -848,7 +867,7 @@ def crunch_single(string):
     
     # Create a new page for the month.    
     month_page = Page()
-    month_page.title = 'Posts from ' + str(post.year()) + '/' + str(post.month()) + ' | ' \
+    month_page.title = 'Posts from ' + str(post.year()) + '/' + str(post.month()) + ' | '\
                        + month_page.title
     month_body = ""
 
@@ -1056,7 +1075,8 @@ if args.serve:
       if conf['server_redirect_htm']:
         if re.match('/\d\d\d\d\/\d\d\/\w', self.path):
           self.path = self.path + '.htm'
-      
+          if args.verbose: print 'redirecting to ' + self.path
+            
       return SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
   
   # Use the handler class and setup a SocketServer instance.
