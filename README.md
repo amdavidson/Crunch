@@ -4,6 +4,44 @@ Crunch is a python based command line utility that allows for manual rebuilding 
 index pages, error pages and the home page. It also supports parsing email to create new 
 posts. It was created to run amdavidson.com.
 
+Usage (from `crunch.py --help`):
+
+    usage: crunch.py [-h] [--all] [--clean] [--dependencies] [--email] [--error]
+                     [--extras] [--feed] [--galleries] [--home] [--indexes]
+                     [--new] [--no-http] [--pages] [--posts] [--serve] [--setup]
+                     [--single SINGLE] [--verbose]
+
+    optional arguments:
+      -h, --help       show this help message and exit
+      --all            Builds the entire site.
+      --clean          Empties the build folder.
+      --dependencies   Builds all the dependencies, ignored unless used with
+                       --single, --new, or --email.
+      --email          Reads an email message from STDIN and parses to create a
+                       new post. Overrides --all, --posts, --indexes, --home, and
+                       --single
+      --error          Generates static error pages.
+      --extras         Generates minified css and js files.
+      --feed           Generates RSS feed.
+      --galleries      Generates galleries.
+      --home           Builds the home page.
+      --indexes        Builds the index pages.
+      --new            Starts an interactive sesson to create a new post. *Not yet
+                       implemented*
+      --no-http        Prevents crunch from contacting external sources during the
+                       build.
+      --pages          Builds all static pages.
+      --posts          Builds all posts.
+      --serve          Starts a lightweight HTTP server to serve build folder to
+                       localhost. Not intended for production use.
+      --setup          Creates a basic blog framework to start with. *Not yet
+                       implemented.*
+      --single SINGLE  Builds a single post. Takes a filename as an argument or
+                       use - to read from STDIN. Overrides all other build instructions.
+                       *Not yet implemented.*
+      --verbose        Enables information display other than errors.
+
+
 The configuration is stored in a file called conf.yaml in the same directory as crunch.
 
 An example configuration follows:
