@@ -605,28 +605,10 @@ def crunch_posts():
             # Only process files with the correct extension per `conf.yaml`.
             if i.endswith(conf['extension']):
               if args.verbose: print '\t\t' + i
-
-              # Create a new post object and parse the post file.
-              post = Post()
-              f = open(posts_folder + '/' + year + '/' + month + '/' + i)
-              post.filename = i
-              post.parse(f.read())        
-              f.close()
               
-              # Create a new page for this post.
-              page = Page()
-              page.title = str(post.title) + ' | ' + page.title
-              page.body = post.formatted()
-
-              # Save the page to the $build/$year/$month folder.
-              n = open(build_folder + '/' + year + '/' + month + '/' + post.slug + \
-                       '.htm', "w")
-              n.writelines(page.formatted())
-              n.close
-              
-              os.chmod(build_folder + '/' + year + '/' + month + '/' + post.slug + \
-                       '.htm', 0644)
-
+              # Process the post
+              crunch_single(open(posts_folder + '/' + year + '/' + month \
+                + '/' + i).read())
 
 # Function to process the home file.
 def crunch_home():
@@ -982,6 +964,7 @@ def crunch_email(message):
     f.write('title: ' + title + '\n')
     f.write('date: ' + str(epoch_time) + '\n')
     f.write('author: ' + conf['author'] + '\n')
+    f.write('slug: ' + slug + '\n')
     if not short == None:
       f.write('short: ' + short + '\n')
     f.write('\n')
