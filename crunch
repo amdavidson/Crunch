@@ -115,10 +115,12 @@ else:
 
 # Define some variables for reuse.
 build_folder = base_folder + '/' + conf['build_folder']
+pages_folder = base_folder + '/' + conf['pages_folder']
 posts_folder = base_folder + '/' + conf['posts_folder']
 public_folder = base_folder + '/' + conf['public_folder']
 images_folder = base_folder + '/' + conf['images_folder']
 galleries_folder = base_folder + '/' + conf['galleries_folder']
+
 
 
 
@@ -335,6 +337,16 @@ def format_post(post):
            'isodate':post.date_8601(), 'date':post.date_pretty(), 
            'short_url':post.url_short(), 'short':post.short}
 
+def format_static(title, content, url):
+  return """
+      <div class="eleven columns">
+        <h3><a href=\"%(url)s\" title="%(title)s">%(title)s</a></h3>
+      </div>
+      <div class="eleven columns">
+        %(content)s
+      </div>
+  """ % {'title':title, 'content':content, 'url':url}
+
 # General purpose formatter for error pages. Takes in an error code string.
 def format_error(code):
   return """
@@ -473,6 +485,40 @@ def crunch_errors():
 # Process pages.
 def crunch_pages(): 
   if args.verbose: print 'Building the static pages.'
+
+  # Get all the files in the pages folder.
+  for filename in os.listdir(pages_folder):
+    # Ensure we're looking at only the files with the right extension per 
+    # conf['extension'].
+    if filename.endswith(conf['extension']):
+      if args.verbose: print 'Building ' + filename
+      
+      # Fire up a markdown object.
+      md = markdown.Markdown(extensions = ['meta'])
+      
+      # Parse the post and grab the content.
+      content = md.convert(open(pages_folder + '/' + filename).read())
+      
+      # Pull the title out of the metadata.
+      title = md.Meta['title'][0]
+      
+      # Generate the url
+      url = '/' + filename.rstrip(conf['extension']) + '.htm'
+      
+      # Make the body of the page
+      body = format_static(title, content, url)
+      
+      # Make a new page object and add the body.
+      page = Page()
+      page.title = title + ' | ' + page.title
+      page.body = body
+      
+      # Make a new file and write out the page.
+      n = open(build_folder + url, 'w')
+      n.writelines(page.formatted())
+      n.close
+      os.chmod(build_folder + url, 0644)
+      
 
 
 # Processes all posts. 
