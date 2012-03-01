@@ -29,7 +29,7 @@ except:
   yaml_available = False
 
 try:
-  import markdown
+  import markdown2
   markdown_available = True
 except: 
   markdown_available = False
@@ -215,7 +215,7 @@ class Post:
     # if markdown is available, use that to process the post body.
     self.markdown = body
     if markdown_available:
-      self.content = markdown.markdown(str(body))
+      self.content = markdown2.markdown(str(body), extras=["code-color", "code-friendly"])
     else:
       if args.verbose: print 'WARN: markdown unavailable, using raw post data.'
       self.content = self.markdown
@@ -549,14 +549,17 @@ def crunch_pages():
     if filename.endswith(conf['extension']):
       if args.verbose: print 'Building ' + filename
       
-      # Fire up a markdown object.
-      md = markdown.Markdown(extensions = ['meta'])
+      # Split the page header from the body.
+      header, body = open(pages_folder + '/' + filename).read().split('\n\n', 1)               
+  
+      # Pull a dict from the yaml in the header.
+      y = yaml.load(header)
       
       # Parse the post and grab the content.
-      content = md.convert(open(pages_folder + '/' + filename).read())
+      content = markdown2.markdown(body, extras=["code-color", "code-friendly"])
       
       # Pull the title out of the metadata.
-      title = md.Meta['title'][0]
+      title = y['title']
       
       # Generate the url
       url = '/' + filename.rstrip(conf['extension']) + '.htm'
@@ -1205,12 +1208,19 @@ def crunch_gallery(name):
   for file in os.listdir(galleries_folder + '/' + name):
 
     # Process the meta data file.
-    if file == 'meta.md':
+    if file == 'meta.yaml':
       if args.verbose: print '\tProcessing metadata.'
-      md = markdown.Markdown(extensions = ['meta'])
-      description = md.convert(open(galleries_folder + '/' + name + '/' + file, \
-        'r').read())
-  
+      
+      a = open(galleries_folder + '/' + name + '/' + file, \
+        'r').read().split('\n\n', 1)               
+      
+      y = yaml.load(a[0])
+      
+      try:
+        description = '<div class="eleven columns">' + \
+          markdown2.markdown(str(a[1]), extras=["code-color", "code-friendly"])  
+      except:
+        description = '<div class="eleven columns">'
   
     # Copy all the images.
     if filter(file.endswith, image_extensions):
@@ -1300,7 +1310,7 @@ def main():
   
       # Re-process everything.
       if args.all:
-        if args.verbose: print 'Building it all.'
+        if args.verbose: print 'Building all the things.'
         # Make sure we have a build folder to use.
         ensure_build_folder()
         
