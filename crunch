@@ -58,6 +58,8 @@ if argparse_available:
                       post. Overrides --all, --posts, --indexes, --home, and --single')
   parser.add_argument('--error', dest='error', action='store_true', 
                       help='Generates static error pages.')
+  parser.add_argument('--extras', dest='extras', action='store_true',
+                      help='Generates minified css and js files.')
   parser.add_argument('--feed', dest='feed', action='store_true',
                       help='Generates RSS feed.')
   parser.add_argument('--galleries', dest='galleries', action='store_true',
@@ -120,8 +122,8 @@ posts_folder = base_folder + '/' + conf['posts_folder']
 public_folder = base_folder + '/' + conf['public_folder']
 images_folder = base_folder + '/' + conf['images_folder']
 galleries_folder = base_folder + '/' + conf['galleries_folder']
-
-
+css_folder = base_folder + '/' + conf['css_folder']
+scripts_folder = base_folder + '/' + conf['scripts_folder']
 
 
 ### Classes
@@ -286,10 +288,7 @@ def format_layout(page):
 
     <link rel="icon" type="image/png" href="/images/favicon.png" />
 
-    <link rel="stylesheet" type="text/css" href="/css/base.css" />
-    <link rel="stylesheet" type="text/css" href="/css/skeleton.css" />
-    <link rel="stylesheet" type="text/css" href="/css/layout.css" />
-    <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Muli:300,300italic|PT+Sans+Narrow:700|Anonymous+Pro" />
+    <link rel="stylesheet" type="text/css" href="/css/app.css" />
 
     <link rel="alternate" type="application/atom+xml" title="amdavidson.com feed" 
           href="/index.xml" />
@@ -339,19 +338,10 @@ def format_layout(page):
       </form>
                         
     </div>
-    
-    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js">
-      </script>
-    <script src="/scripts/jquery.timeago.js"></script>
-    <script src="/scripts/twitter.js"></script>
-    <script src="/scripts/pinboard.js"></script>
-    
-    <script type="text/javascript">
-      jQuery(document).ready(function() {
-          jQuery("span.timeago").timeago();
-      });
-    </script>
+    </div>
 
+    <script src="/scripts/zepto.min.js"></script>
+    <script src="/scripts/app.js"></script>
     <script src="http://mint.amdavidson.com/?js" type="text/javascript"></script>
 
   </body>
@@ -520,6 +510,8 @@ def ensure_build_folder():
     shutil.copytree(public_folder, build_folder)
     shutil.copytree(images_folder, build_folder + '/' + conf['images_folder'])
     os.mkdir(build_folder + '/' + conf['galleries_folder'])
+    os.mkdir(build_folder + '/' + conf['css_folder'])
+    os.mkdir(build_folder + '/' + conf['scripts_folder'])
     return 2
   return 1
 
@@ -1270,7 +1262,101 @@ def crunch_gallery_all():
   for dir in [x[0] for x in os.walk(galleries_folder)]:
     if not re.search(conf['galleries_folder'] + '$', dir):
       crunch_gallery(os.path.basename(dir))
+
       
+      
+      
+# Combine and minify CSS and JS.
+def crunch_extras():
+  if args.verbose: print 'Combining and minifying stylesheets and scripts.'
+  
+  # Make some empty variables to put the minified content in.
+  css_min = []
+  js_min = []
+  
+  # Iterate through the css files.
+  for file in sorted(os.listdir(css_folder)):
+    
+    # Ignore excluded files. 
+    if not file.startswith('_'):
+      
+      # Only Process all the non-minified CSS files.
+      if file.endswith('.css') and not file.endswith('.min.css'):
+      
+        # Read the file into a tmp var.
+        tmp = open(css_folder + '/' + file).read()
+        
+        # Kill all the comments.
+        tmp = re.sub( r'/\*[\s\S]*?\*/', '', tmp)
+        
+        # Minimize the whitespace.
+        tmp = ' '.join(tmp.split())
+        
+        # Add it to the new file.
+        css_min.append(tmp)
+      
+      # If the file is minified, we still want it but don't want to waste time.
+      if file.endswith('.min.css'):
+        css_min.append(open(css_folder + '/' + file).read())
+      
+    # If the file is excluded just copy it over.
+    if file.startswith('_'):
+      shutil.copy2(css_folder + '/' + file, build_folder + '/' + \
+        conf['css_folder'] + '/' + file.lstrip('_'))      
+  
+  # Write out our new minified CSS file.
+  f = open(build_folder + '/' + conf['css_folder'] + '/app.css', 'w')
+  f.writelines(''.join(css_min))
+  f.close
+  os.chmod(build_folder + '/' + conf['css_folder'] + '/app.css', 0644)      
+      
+  # Iterate through JS files.
+  for file in sorted(os.listdir(scripts_folder)):
+  
+    # Ignore excluded files.
+    if not file.startswith('_'):
+      
+      # Only bother with JS files and ignore pre-minified ones.
+      if file.endswith('.js') and not file.endswith('.min.js'):
+        # Read the file into a tmp var.
+        for line in open(scripts_folder + '/' + file).readlines():
+      
+          # Ignore comments lines.
+          if not re.match('//', line) and not re.match('\s+//', line):
+              
+              # minimize whitespace
+              line = ' '.join(line.split())          
+              
+              # add the minimized js to the new file
+              js_min.append(line)
+
+        # Kill all the comments.
+        #tmp = re.sub( r'\/\*.+?\*\/|\/\/.*(?=[\n\r])', "", tmp)
+        
+        # Minimize the whitespace. Can't eliminate as some is critical.
+        # Cannot be used unless comments are removed.
+        #tmp = re.sub(r'\s+', ' ', tmp)
+              
+        #js_min.append(tmp)
+      
+      # Included the minified js file, but don't process it.
+      if file.endswith('.min.js'):
+        js_min.append(open(scripts_folder + '/' + file).read())
+        
+    # Copy excluded files straight over with no changes.
+    if file.startswith('_'):
+      shutil.copy2(scripts_folder + '/' + file, build_folder + '/' + \
+        conf['scripts_folder'] + '/' + file.lstrip('_'))
+    
+  # Write out our new minified JS file.
+  f = open(build_folder + '/' + conf['scripts_folder'] + '/app.js', 'w')
+  f.writelines(''.join(js_min))
+  f.close
+  os.chmod(build_folder + '/' + conf['scripts_folder'] + '/app.js', 0644)
+
+    
+  
+  
   
 ##########################################################################################
 ### Party Time.
@@ -1332,12 +1418,15 @@ def main():
         # Rebuild the feed.
         crunch_feed()
         
+        # Rebuild the extras.
+        crunch_extras()
+        
         # Build the galleries.
         crunch_gallery_all()
       
       # We're going to do a partial rebuild.
       elif args.posts or args.home or args.indexes or args.feed or args.galleries or \
-        args.pages:
+        args.pages or args.extras:
         
         ensure_build_folder()
         
@@ -1366,6 +1455,10 @@ def main():
         # Build the feed if the --feed flag is set.
         if args.feed:
           crunch_feed()
+          
+        # Build the extras if the --extras flag is set.
+        if args.extras:
+          crunch_extras()
           
         # Build the galleries if the --galleries flag is set.
         if args.galleries:
