@@ -426,14 +426,16 @@ def format_gallery_single(image):
       <div class="eleven columns">
         <h3>%(name)s</h3>
         <p style="text-align:center;"><a href="%(full_url)s">
-          <img src="%(mid_url)s" />
+          <img class="scale-with-grid" src="%(mid_url)s" />
         </a></p>
       </div>
   """ % { 'name': image.name(), 'full_url': image.full_url(), 'mid_url': image.mid_url() }
   
 def format_gallery_thumb(image):
   return """
-      <a href="%(mid_page)s"><img src="%(thm_path)s" /></a>
+      <div class="thumbnail">
+        <a href="%(mid_page)s"><img src="%(thm_path)s" /></a>
+      </div>
   """ % { 'mid_page': image.mid_page(), 'thm_path': image.thumbnail_url() }
 
 ##########################################################################################
@@ -858,15 +860,21 @@ def crunch_email(message):
             exif = dict(original._getexif().items())
           else: 
             exif = False 
-            
+          
+          
+          
           if not exif == False:
-            if args.verbose: print 'Image is rotated, correcting.'
-            if exif[orientation] == 3:
-              original = original.rotate(180, expand=True)
-            elif exif[orientation] == 6:
-              original = original.rotate(270, expand=True)
-            elif exif[orientation] == 8:
-              original = original.rotate(90, expand=True)
+            try:
+              if args.verbose: print 'Image is rotated, correcting.'
+              if exif[orientation] == 3:
+                original = original.rotate(180, expand=True)
+              elif exif[orientation] == 6:
+                original = original.rotate(270, expand=True)
+              elif exif[orientation] == 8:
+                original = original.rotate(90, expand=True)
+            except:
+              if args.verbose: print 'Cannot detect rotation from EXIF.'
+              
 
           # Create empty resized var.
           resized = False
@@ -1195,6 +1203,7 @@ def crunch_gallery(name):
   # Make a destination gallery.
   if not os.path.exists(build_folder + '/' + conf['galleries_folder'] + '/' + name):
     os.mkdir(build_folder + '/' + conf['galleries_folder'] + '/' + name)
+    os.chmod(build_folder + '/' + conf['galleries_folder'] + '/' + name, 0755)
 
   images = ''
   
