@@ -30,6 +30,8 @@ An example configuration follows:
     public_folder: public
     images_folder: images
     galleries_folder: galleries
+    css_folder: css
+    scripts_folder: scripts
     home_count: 5
     image_width: 640
     image_height: 640
