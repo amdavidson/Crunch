@@ -1503,7 +1503,7 @@ def main():
         server = SocketServer.TCPServer(("", conf['server_port']), handler)
       except:
         print "Port occupied... Retrying."
-        time.sleep(10)
+        time.sleep(5)
          
     # Change to the build folder. 
     os.chdir(build_folder)
