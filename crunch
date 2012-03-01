@@ -316,13 +316,15 @@ def format_layout(page):
       
       <div id="twitter" style="display:none;">
         <h6><a href="http://twitter.com/amdavidson">tweeted</a></h6>
-        <p class="small"><span id="tweet"></span></p>
+        <p class="small"><span id="tweet"></span><br/>
+        <span id="tweet-date"></span></p>
       </div>
 
       <div id="pinboard" style="display:none;">
         <h6><a href="http://pinboard.in/u:amdavidson">bookmarked</a></h6>
         <p class="small"><a id="pin-link" href="/"><span id="pin-title"></span></a><br/>
-        <span id="pin-description"></span></p>
+        <span id="pin-description"></span><br/>
+        <span id="pin-date"></span></p>
       </div>
 
       <h6>Search</h6>
@@ -659,8 +661,8 @@ def crunch_indexes():
   if args.verbose: print 'Building the indexes.'
   
   # Start the body for the archives.htm page.
-  archives_body = '<div class="eleven-columns"><h3>Post Archives</h3>\n' + \
-    '<ul id="acc" class="square">\n'
+  archives_body = '\t<div class="eleven-columns">\n\t\t<h3>Post Archives</h3>\n\t</div>\n' + \
+    '\t<div class="eleven-columns">\n\t\t<ul class="square">\n'
 
   # Grab all the years in the posts folder.
   for year in sorted(os.listdir(posts_folder), reverse=True): 
@@ -670,8 +672,8 @@ def crunch_indexes():
       if args.verbose: print 'Building indexes for ' + year + ':'
 			
       # Add an entry to archives.htm
-      archives_body += '<li><a href="/' + year + '">' + year + '</a>\n\t\
-        <ul class="circle">\n'
+      archives_body += '\t\t\t<li><a href="/' + year + '">' + year + '</a>\n\t\
+        \t\t<ul class="circle">\n'
 
       # Make a corresponding year folder in the build folder if it doesn't exist.
       year_path = build_folder + '/' + year
@@ -688,7 +690,7 @@ def crunch_indexes():
           if args.verbose: print "\t" + month
 
           # Add an entry to archives.htm.
-          archives_body += '\t\t<li><a href="/' + year + '/' + month + '">' + month \
+          archives_body += '\t\t\t\t\t<li><a href="/' + year + '/' + month + '">' + month \
               + '</a>\n'
 
           # Make a corresponding month folder in the build folder if it doesn't exist.
@@ -729,11 +731,11 @@ def crunch_indexes():
           month_page.body = month_body
 
           # Write out the titles to the posts to archives.htm in ascending order.
-          archives_body += '\t\t\t<ul>\n'
+          archives_body += '\t\t\t\t\t\t<ul>\n'
           for post in sorted(month_catch, key=lambda post: post.time, reverse=True):
-            archives_body += '\t\t\t\t<li><a href="' + post.url() + '">' + \
+            archives_body += '\t\t\t\t\t\t\t<li><a href="' + post.url() + '">' + \
               str(post.title) + '</a></li>\n'
-          archives_body += '\t\t\t</ul></li>\n'
+          archives_body += '\t\t\t\t\t\t</ul>\n\t\t\t\t\t</li>\n'
 
           # Write out the month page into the build folder.
           m = open(build_folder + '/' + year + '/' + month + '/index.htm', "w")
@@ -742,7 +744,7 @@ def crunch_indexes():
           os.chmod(build_folder + '/' + year + '/' + month + '/index.htm', 0644)
       
       # Close out the list of months in archive.htm
-      archives_body += '\t</ul></li>\n'
+      archives_body += '\t\t\t\t</ul>\n\t\t\t</li>\n'
       
       # Once all the posts for the current year have been processed, make a new
       # Page object for the year.
@@ -763,7 +765,7 @@ def crunch_indexes():
       os.chmod(build_folder + '/' + year + '/index.htm', 0644)
     
   # Close out the list of years in archive.htm
-  archives_body += '</ul>\n</div>'
+  archives_body += '\t\t</ul>\n\t</div>'
   
   archives_page = Page()
   archives_page.title = 'Archives | ' + archives_page.title
@@ -1237,15 +1239,19 @@ def crunch_gallery(name):
         os.chmod(build_folder + '/' + conf['galleries_folder'] + '/' + name + '/' + \
           i.name() + '.htm', 0644)
    
+   
+  images += "</div>"
+   
   gal_page = Page()
   
-  leader = '<h3>' + str(md.Meta['title'][0]) + '</h3>\n<p class="small">' + \
-    time.strftime("posted on %Y-%m-%d at %I:%M %p", 
-      time.localtime(float(md.Meta['date'][0]))) + '</p>'
+  leader = '<div class="eleven columns">\n<h3>' + str(y['title']) + \
+    '</h3>\n<p class="small">' + \
+    time.strftime("posted on %Y-%m-%d at %I:%M %p", \
+    time.localtime(float(y['date']))) + '</p></div>'
   
   gal_page.body = leader + description + images
   
-  gal_page.title = str(md.Meta['title'][0]) + ' | ' + gal_page.title
+  gal_page.title = str(y['title']) + ' | ' + gal_page.title
   
   f = open(build_folder + '/' + conf['galleries_folder'] + '/' + name + '/index.htm', 'w')
   f.writelines(gal_page.formatted())
