@@ -228,6 +228,44 @@ class Post:
     return format_xml_item(self)
 
 
+class Gallery_Image:
+  master_image = 'img.jpg'
+  gallery_name = 'test'
+  
+  def name(self):
+    [name, extension] = str.split(self.master_image, '.')
+    return name
+  
+  def full_url(self):
+    return '/' + conf['galleries_folder'] + '/' + self.gallery_name + '/' + \
+      self.master_image
+  
+  def thumbnail_file(self):
+    [name, extension] = str.split(self.master_image, '.')
+    return name + '_thm.' + extension
+    
+  def thumbnail_url(self):
+    return '/' + conf['galleries_folder'] + '/' + self.gallery_name + '/' + \
+      self.thumbnail_file()
+    
+  def mid_file(self):
+    [name, extension] = str.split(self.master_image, '.')
+    return name + '_z.' + extension
+    
+  def mid_url(self):
+    return '/' + conf['galleries_folder'] + '/' + self.gallery_name + '/' + \
+      self.mid_file()
+    
+  def mid_page(self):
+    return '/' + conf['galleries_folder'] + '/' + self.gallery_name + '/' + \
+      str.split(self.master_image, '.')[0] + '.htm'
+    
+  def formatted_single(self):
+    return format_gallery_single(self)
+  
+  def formatted_thumb(self):
+    return format_gallery_thumb(self)
+
 
 ##########################################################################################
 ### Templates.
@@ -391,6 +429,20 @@ def format_xml_item(post):
   """ % {'title': post.title, 'url': conf['base_url'].rstrip('/') + post.url(), \
          'date_2822': post.date_2822(), 'body': post.content }
 
+def format_gallery_single(image):
+  return """
+      <div class="eleven columns">
+        <h3>%(name)s</h3>
+        <p style="text-align:center;"><a href="%(full_url)s">
+          <img src="%(mid_url)s" />
+        </a></p>
+      </div>
+  """ % { 'name': image.name(), 'full_url': image.full_url(), 'mid_url': image.mid_url() }
+  
+def format_gallery_thumb(image):
+  return """
+      <a href="%(mid_page)s"><img src="%(thm_path)s" /></a>
+  """ % { 'mid_page': image.mid_page(), 'thm_path': image.thumbnail_url() }
 
 ##########################################################################################
 ### Helper Functions
