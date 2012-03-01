@@ -307,21 +307,21 @@ def format_layout(page):
       %(body)s
     </div>
     <div class="four columns">
-      <h6>About</h6>
+      <h6><a href="/about.htm">about</a></h6>
       <p class="small">amdavidson.com is a simple blog run by Andrew Davidson, a 
       manufacturing engineer with a blogging habit. He sometimes posts 140 character 
       <a href="http://twitter.com/amdavidson">tidbits</a>, shares 
       <a href="/">photos</a>, and saves 
       <a href="http://pinboard.in/u:amdavidson/">links</a>. You can also see posts 
-      dating <a href="/archives">back to 2005</a>.</p>
+      dating <a href="/archives.htm">back to 2005</a>.</p>
       
       <div id="twitter" style="display:none;">
-        <h6><a href="http://twitter.com/amdavidson">Twitter</a></h6>
+        <h6><a href="http://twitter.com/amdavidson">tweeted</a></h6>
         <p class="small"><span id="tweet"></span></p>
       </div>
 
       <div id="pinboard" style="display:none;">
-        <h6><a href="http://pinboard.in/u:amdavidson">Pinboard</a></h6>
+        <h6><a href="http://pinboard.in/u:amdavidson">bookmarked</a></h6>
         <p class="small"><a id="pin-link" href="/"><span id="pin-title"></span></a><br/>
         <span id="pin-description"></span></p>
       </div>
@@ -448,6 +448,10 @@ def format_gallery_thumb(image):
 ### Helper Functions
 ##########################################################################################
 
+
+# get_recent() takes in an integer that sets the number of recent posts to get, it 
+# returns a list of post objects in reverse chronological order. This function is used
+# in crunch_feed() and crunch_home().
 def get_recent(count):
   # Create an empty variable to store posts in.
   post_list = []
